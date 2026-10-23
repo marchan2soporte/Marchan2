@@ -1,0 +1,19 @@
+{
+  "version": "0.3",
+  "name": "Marchan2",
+  "repository": "https://github.com/marchan2soporte/Marchan2",
+  "portable_directory": "Marchan2_v0.3",
+  "portable_filename": "Marchan2_v0.3_Windows.zip",
+  "python": "3.14",
+  "validation": {
+    "unit_tests": 32,
+    "source_integration": "passed",
+    "frozen_integration": "passed"
+  },
+  "reports": {
+    "available": 28,
+    "listed": 69
+  },
+  "status": "prototype",
+  "ticketbai": "pending"
+}

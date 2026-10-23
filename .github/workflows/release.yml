@@ -1,0 +1,55 @@
+name: Windows release
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.14'
+      - name: Install build tools
+        run: python -m pip install -r requirements-build.txt
+      - name: Test source
+        run: python -m unittest discover -s tests -v
+      - name: Check application integration
+        run: python tests/check_dual_apps.py
+      - name: Build both applications
+        run: python -m PyInstaller --noconfirm Marchan2_dual.spec
+      - name: Test executables
+        run: python tests/check_dual_apps.py --frozen
+      - name: Package portable folder
+        shell: pwsh
+        run: |
+          $releaseInfo = Get-Content release.json | ConvertFrom-Json
+          if ($env:GITHUB_REF_TYPE -eq 'tag' -and $env:GITHUB_REF_NAME -ne "v$($releaseInfo.version)") {
+            throw 'The tag does not match release.json'
+          }
+          $releaseFolder = Join-Path 'dist' $releaseInfo.portable_directory
+          Copy-Item README.md (Join-Path $releaseFolder 'LEEME.md')
+          Copy-Item ALCANCE.md $releaseFolder
+          Copy-Item release.json $releaseFolder
+          $pythonLicense = Join-Path $env:pythonLocation 'LICENSE.txt'
+          if (Test-Path $pythonLicense) { Copy-Item $pythonLicense (Join-Path $releaseFolder 'PYTHON_LICENSE.txt') }
+          Compress-Archive -Path $releaseFolder -DestinationPath $releaseInfo.portable_filename
+          "RELEASE_ZIP=$($releaseInfo.portable_filename)" >> $env:GITHUB_ENV
+      - uses: actions/upload-artifact@v7
+        with:
+          name: Marchan2-Windows
+          path: ${{ env.RELEASE_ZIP }}
+      - name: Publish tagged release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          gh release create $env:GITHUB_REF_NAME $env:RELEASE_ZIP --verify-tag --title "Marchan2 $env:GITHUB_REF_NAME" --notes-file CHANGELOG.md
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
